@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/rwadmin/Documentos/Paradox/service-csharp/service-csharp/service-csharp.csproj": {}
+    "/home/rwadmin/Documentos/Paradox/service-csharp/service-csharp.csproj": {}
   },
   "projects": {
-    "/home/rwadmin/Documentos/Paradox/service-csharp/service-csharp/service-csharp.csproj": {
+    "/home/rwadmin/Documentos/Paradox/service-csharp/service-csharp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/rwadmin/Documentos/Paradox/service-csharp/service-csharp/service-csharp.csproj",
+        "projectUniqueName": "/home/rwadmin/Documentos/Paradox/service-csharp/service-csharp.csproj",
         "projectName": "service-csharp",
-        "projectPath": "/home/rwadmin/Documentos/Paradox/service-csharp/service-csharp/service-csharp.csproj",
+        "projectPath": "/home/rwadmin/Documentos/Paradox/service-csharp/service-csharp.csproj",
         "packagesPath": "/home/rwadmin/.nuget/packages/",
-        "outputPath": "/home/rwadmin/Documentos/Paradox/service-csharp/service-csharp/obj/",
+        "outputPath": "/home/rwadmin/Documentos/Paradox/service-csharp/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/rwadmin/.nuget/NuGet/NuGet.Config"
@@ -38,9 +38,27 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "DotNetEnv": {
+              "target": "Package",
+              "version": "[3.1.1, )"
+            },
             "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
               "version": "[8.0.21, )"
+            },
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.2, )"
+            },
+            "Microsoft.EntityFrameworkCore.Tools": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.2, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[8.0.2, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",

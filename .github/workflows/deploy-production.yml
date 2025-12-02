@@ -1,16 +1,10 @@
 name: Build and Deploy to Production
 
 on:
-<<<<<<< HEAD
-  push:
-    branches:
-      - production
-=======
   pull_request:
     branches:
       - production
     types: [closed]
->>>>>>> ce2cf73 (NEW: Pipelines config)
   workflow_dispatch:
 
 concurrency:
@@ -20,11 +14,8 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-<<<<<<< HEAD
-=======
   # CONFIGURAR: URL de tu API para health check
   HEALTH_CHECK_URL: https://api.tu-dominio.com/health
->>>>>>> ce2cf73 (NEW: Pipelines config)
 
 jobs:
   # ══════════════════════════════════════════════════════════════════════════════
@@ -33,10 +24,7 @@ jobs:
   pre-deploy-tests:
     name: Pre-Deploy Tests
     runs-on: ubuntu-latest
-<<<<<<< HEAD
-=======
     if: github.event.pull_request.merged == true
->>>>>>> ce2cf73 (NEW: Pipelines config)
     steps:
       - name: Checkout codigo
         uses: actions/checkout@v4
@@ -56,14 +44,6 @@ jobs:
         run: dotnet test --configuration Release --no-restore --verbosity normal
 
   # ══════════════════════════════════════════════════════════════════════════════
-<<<<<<< HEAD
-  # JOB 2: Build y Push de imagen Docker
-  # ══════════════════════════════════════════════════════════════════════════════
-  build-and-push:
-    name: Build & Push Docker
-    needs: pre-deploy-tests
-    runs-on: ubuntu-latest
-=======
   # JOB 2: Security Scanning con Trivy
   # ══════════════════════════════════════════════════════════════════════════════
   security-scan:
@@ -98,39 +78,26 @@ jobs:
     if: github.event.pull_request.merged == true
     outputs:
       image_tag: ${{ steps.meta.outputs.tags }}
->>>>>>> ce2cf73 (NEW: Pipelines config)
     permissions:
       contents: read
       packages: write
 
     steps:
-<<<<<<< HEAD
-      - name: Checkout código
-        uses: actions/checkout@v4
-=======
       - name: Checkout codigo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
->>>>>>> ce2cf73 (NEW: Pipelines config)
 
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-<<<<<<< HEAD
-      - name: Iniciar sesión en GitHub Container Registry
-=======
       - name: Iniciar sesion en GitHub Container Registry
->>>>>>> ce2cf73 (NEW: Pipelines config)
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ secrets.GHCR_USERNAME }}
           password: ${{ secrets.GHCR_PAT }}
 
-<<<<<<< HEAD
-      - name: Extraer metadatos (etiquetas, labels)
-=======
       - name: Generar version semantica
         id: version
         run: |
@@ -142,7 +109,6 @@ jobs:
           echo "Nueva version: v$VERSION"
 
       - name: Extraer metadatos
->>>>>>> ce2cf73 (NEW: Pipelines config)
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -150,12 +116,8 @@ jobs:
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
-<<<<<<< HEAD
-            type=raw,value=latest,enable={{is_default_branch}}
-=======
             type=raw,value=latest
             type=raw,value=${{ steps.version.outputs.version }}
->>>>>>> ce2cf73 (NEW: Pipelines config)
 
       - name: Construir y publicar imagen Docker
         uses: docker/build-push-action@v5
@@ -168,21 +130,12 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ══════════════════════════════════════════════════════════════════════════════
-<<<<<<< HEAD
-  # JOB 3: Deploy usando docker compose
-=======
   # JOB 4: Deploy usando docker compose
->>>>>>> ce2cf73 (NEW: Pipelines config)
   # ══════════════════════════════════════════════════════════════════════════════
   deploy:
     name: Deploy to Server
     needs: build-and-push
     runs-on: ubuntu-latest
-<<<<<<< HEAD
-    environment: production
-
-    steps:
-=======
     if: github.event.pull_request.merged == true
     environment: production
 
@@ -198,7 +151,6 @@ jobs:
             # Guardar ID de imagen actual para posible rollback
             docker images ghcr.io/paradoxboard/service-csharp:production -q > /tmp/previous_image_id || true
 
->>>>>>> ce2cf73 (NEW: Pipelines config)
       - name: Desplegar al servidor
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -220,13 +172,6 @@ jobs:
             # Verificar estado
             docker compose ps
             
-<<<<<<< HEAD
-            # Limpiar imagenes sin usar
-            docker image prune -f --filter "until=24h" || true
-            
-            echo "Deploy de production completado exitosamente"
-
-=======
             echo "Deploy de production completado"
 
   # ══════════════════════════════════════════════════════════════════════════════
@@ -354,4 +299,3 @@ jobs:
         run: |
           echo "Deploy fallido - revisar logs"
           exit 1
->>>>>>> ce2cf73 (NEW: Pipelines config)

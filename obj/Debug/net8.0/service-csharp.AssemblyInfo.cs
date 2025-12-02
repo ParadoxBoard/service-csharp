@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("service-csharp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+333d2f514ccd137e7c4eeb73a12e90149379ee07")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8bc4f76261efc049d488ca6bf53693f2c410cc37")]
 [assembly: System.Reflection.AssemblyProductAttribute("service-csharp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("service-csharp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
