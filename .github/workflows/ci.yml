@@ -55,10 +55,17 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 <<<<<<< HEAD
+<<<<<<< HEAD
           cache: true # CORREGIDO: Habilita la caché correctamente (true/false)
 =======
           cache: nuget
 >>>>>>> ce2cf73 (NEW: Pipelines config)
+=======
+          cache: nuget
+=======
+          cache: true # CORREGIDO: Habilita la caché correctamente (true/false)
+>>>>>>> 333d2f5 (FIX: solving pipelines problems)
+>>>>>>> 300d073 (DELTE: destroy unnecesary files)
 
       - name: Restaurar dependencias
         run: dotnet restore
@@ -168,6 +175,7 @@ jobs:
       - name: Escanear imagen con Trivy
         uses: aquasecurity/trivy-action@master
         with:
+<<<<<<< HEAD
           image-ref: ${{ github.repository }}:scan
           format: 'table'
           exit-code: '0'
@@ -180,6 +188,54 @@ jobs:
   # ══════════════════════════════════════════════════════════════════════════════
   build-verification:
     name: Build Verification
+=======
+          dotnet-version: '8.0.x'
+          cache: true
+
+      - name: Restaurar dependencias
+        run: dotnet restore
+
+      - name: Ejecutar tests
+        run: dotnet test --configuration Release --no-restore --verbosity normal
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 3: Security Scan (Trivy) - CORREGIDO
+  # ════════════════════════════════════════════════════════════════════════════
+  security:
+    name: Security Scan
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # Necesario si quieres subir reportes a GitHub Security
+
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      # PASO NUEVO: Necesario construir la imagen antes de escanearla
+      # NOTA: Usamos minúsculas en el nombre de la imagen (paradoxboard)
+      - name: Construir imagen para escaneo
+        run: docker build -t paradoxboard/service-csharp:scan .
+
+      - name: Escanear vulnerabilidades (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'paradoxboard/service-csharp:scan' # CORREGIDO: Minúsculas
+          format: 'table'
+          exit-code: '1' # Falla el pipeline si encuentra vulnerabilidades críticas
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # Resumen final
+  # ════════════════════════════════════════════════════════════════════════════
+  ci-success:
+    name: CI Success
+    needs: [build, test, security] # Agregamos security a los requerimientos
+    if: always()
+>>>>>>> 333d2f5 (FIX: solving pipelines problems)
     runs-on: ubuntu-latest
     needs: build-and-test
     steps:
@@ -208,8 +264,27 @@ jobs:
     steps:
       - name: CI completado exitosamente
         run: |
+<<<<<<< HEAD
           echo "CI Pipeline completado exitosamente"
           echo "Repository: ${{ github.repository }}"
           echo "Commit: ${{ github.sha }}"
           echo "Branch: ${{ github.ref_name }}"
+<<<<<<< HEAD
 >>>>>>> ce2cf73 (NEW: Pipelines config)
+=======
+=======
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "Build falló"
+            exit 1
+          fi
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Tests fallaron"
+            exit 1
+          fi
+          if [ "${{ needs.security.result }}" != "success" ]; then
+            echo "Security check falló"
+            exit 1
+          fi
+          echo "Todos los checks pasaron exitosamente"
+>>>>>>> 333d2f5 (FIX: solving pipelines problems)
+>>>>>>> 300d073 (DELTE: destroy unnecesary files)
