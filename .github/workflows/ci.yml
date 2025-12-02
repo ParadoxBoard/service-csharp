@@ -1,0 +1,84 @@
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                        CI PIPELINE - .NET/C#                                ║
+# ║  Se ejecuta en Pull Requests para validar codigo antes del merge            ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [production, development, main]
+  push:
+    branches: [development]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 1: Build
+  # ════════════════════════════════════════════════════════════════════════════
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restaurar dependencias
+        run: dotnet restore
+
+      - name: Compilar
+        run: dotnet build --configuration Release --no-restore
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 2: Tests
+  # ════════════════════════════════════════════════════════════════════════════
+  test:
+    name: Test
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restaurar dependencias
+        run: dotnet restore
+
+      - name: Ejecutar tests
+        run: dotnet test --configuration Release --no-restore --verbosity normal
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # Resumen final
+  # ════════════════════════════════════════════════════════════════════════════
+  ci-success:
+    name: CI Success
+    needs: [build, test]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Verificar estado de jobs
+        run: |
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "Build fallo"
+            exit 1
+          fi
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Tests fallaron"
+            exit 1
+          fi
+          echo "Todos los checks pasaron exitosamente"
