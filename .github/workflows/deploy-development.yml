@@ -107,11 +107,11 @@ jobs:
             cd /opt/Paradox
             
             # Descargar nuevas imagenes y reiniciar servicios
-            docker compose pull
-            docker compose up -d
+            docker compose pull service-csharp
+            docker compose up -d service-csharp
             
             # Verificar estado
-            docker compose ps
+            docker compose ps service-csharp
             
             # Limpiar imagenes sin usar
             docker image prune -f --filter "until=24h" || true
