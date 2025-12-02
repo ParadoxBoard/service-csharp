@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 using Microsoft.EntityFrameworkCore;
 using service_csharp.Data;
 using service_csharp.Services;
@@ -28,6 +29,14 @@ var connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username=
 
 builder.Services.AddDbContext<ParadoxContext>(options =>
     options.UseNpgsql(connectionString));
+=======
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+>>>>>>> ce2cf73 (NEW: Pipelines config)
 
 var app = builder.Build();
 
@@ -40,8 +49,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+<<<<<<< HEAD
 app.MapControllers();
 
+=======
+>>>>>>> ce2cf73 (NEW: Pipelines config)
 var summaries = new[]
 {
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
