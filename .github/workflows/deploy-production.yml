@@ -159,6 +159,8 @@ jobs:
           key: ${{ secrets.VPS_KEY }}
           port: 22
           script: |
+            set -e # Detener el script si ocurre algún error
+            
             # Login a GHCR
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
             
@@ -167,7 +169,7 @@ jobs:
             
             # Descargar nuevas imagenes y reiniciar servicios
             docker compose pull service-csharp
-            docker compose up -d service-csharp
+            docker compose up -d --no-deps service-csharp
             
             # Verificar estado
             docker compose ps service-csharp
