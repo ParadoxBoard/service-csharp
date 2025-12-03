@@ -72,6 +72,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
+            type=raw,value=latest
 
       - name: Construir y publicar imagen Docker
         uses: docker/build-push-action@v5
