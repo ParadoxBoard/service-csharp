@@ -56,12 +56,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build imagen para escaneo
-        run: docker build -t ${{ env.IMAGE_NAME }}:scan .
+        run: docker build -t paradoxboard/service-csharp:scan .
 
       - name: Escanear imagen con Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.IMAGE_NAME }}:scan
+          image-ref: paradoxboard/service-csharp:scan
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
