@@ -22,4 +22,4 @@ EXPOSE 8080
 LABEL org.opencontainers.image.source="https://github.com/ParadoxBoard/service-csharp.git"
 
 # CONFIGURAR: Cambiar por el nombre de tu DLL
-ENTRYPOINT ["dotnet", "MiProyecto.dll"]
+ENTRYPOINT ["dotnet", "service-csharp.dll"]

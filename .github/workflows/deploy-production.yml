@@ -1,9 +1,10 @@
 name: Build and Deploy to Production
 
 on:
-  push:
+  pull_request:
     branches:
       - production
+    types: [closed]
   workflow_dispatch:
 
 concurrency:
@@ -13,6 +14,8 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # CONFIGURAR: URL de tu API para health check
+  HEALTH_CHECK_URL: https://api.tu-dominio.com/health
 
 jobs:
   # ══════════════════════════════════════════════════════════════════════════════
@@ -21,6 +24,7 @@ jobs:
   pre-deploy-tests:
     name: Pre-Deploy Tests
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
     steps:
       - name: Checkout codigo
         uses: actions/checkout@v4
@@ -40,31 +44,71 @@ jobs:
         run: dotnet test --configuration Release --no-restore --verbosity normal
 
   # ══════════════════════════════════════════════════════════════════════════════
-  # JOB 2: Build y Push de imagen Docker
+  # JOB 2: Security Scanning con Trivy
+  # ══════════════════════════════════════════════════════════════════════════════
+  security-scan:
+    name: Security Scan
+    needs: pre-deploy-tests
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      - name: Build imagen para escaneo
+        run: docker build -t ${{ env.IMAGE_NAME }}:scan .
+
+      - name: Escanear imagen con Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:scan
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  # ══════════════════════════════════════════════════════════════════════════════
+  # JOB 3: Build y Push de imagen Docker
   # ══════════════════════════════════════════════════════════════════════════════
   build-and-push:
     name: Build & Push Docker
-    needs: pre-deploy-tests
+    needs: [pre-deploy-tests, security-scan]
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
     permissions:
       contents: read
       packages: write
 
     steps:
-      - name: Checkout código
+      - name: Checkout codigo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Iniciar sesión en GitHub Container Registry
+      - name: Iniciar sesion en GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ secrets.GHCR_USERNAME }}
           password: ${{ secrets.GHCR_PAT }}
 
-      - name: Extraer metadatos (etiquetas, labels)
+      - name: Generar version semantica
+        id: version
+        run: |
+          # Obtener ultimo tag o usar 0.0.0
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          # Incrementar patch version
+          VERSION=$(echo $LAST_TAG | sed 's/v//' | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Nueva version: v$VERSION"
+
+      - name: Extraer metadatos
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -72,7 +116,8 @@ jobs:
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest
+            type=raw,value=${{ steps.version.outputs.version }}
 
       - name: Construir y publicar imagen Docker
         uses: docker/build-push-action@v5
@@ -85,15 +130,27 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ══════════════════════════════════════════════════════════════════════════════
-  # JOB 3: Deploy usando docker compose
+  # JOB 4: Deploy usando docker compose
   # ══════════════════════════════════════════════════════════════════════════════
   deploy:
     name: Deploy to Server
     needs: build-and-push
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
     environment: production
 
     steps:
+      - name: Guardar imagen anterior (para rollback)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_KEY }}
+          port: 22
+          script: |
+            # Guardar ID de imagen actual para posible rollback
+            docker images ghcr.io/paradoxboard/service-csharp:production -q > /tmp/previous_image_id || true
+
       - name: Desplegar al servidor
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -102,6 +159,8 @@ jobs:
           key: ${{ secrets.VPS_KEY }}
           port: 22
           script: |
+            set -e # Detener el script si ocurre algún error
+            
             # Login a GHCR
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
             
@@ -109,14 +168,136 @@ jobs:
             cd /opt/Paradox
             
             # Descargar nuevas imagenes y reiniciar servicios
-            docker compose pull
-            docker compose up -d
+            docker compose pull service-csharp
+            docker compose up -d --no-deps service-csharp
             
             # Verificar estado
-            docker compose ps
+            docker compose ps service-csharp
             
-            # Limpiar imagenes sin usar
-            docker image prune -f --filter "until=24h" || true
-            
-            echo "Deploy de production completado exitosamente"
+            echo "Deploy de production completado"
 
+  # ══════════════════════════════════════════════════════════════════════════════
+  # JOB 5: Health Check post-deploy
+  # ══════════════════════════════════════════════════════════════════════════════
+  health-check:
+    name: Health Check
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Esperar a que el servicio inicie
+        run: sleep 30
+
+      - name: Verificar health del servicio
+        id: health
+        run: |
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            # CONFIGURAR: Cambia la URL por tu endpoint de health
+            if curl -sf --max-time 10 "${{ env.HEALTH_CHECK_URL }}" > /dev/null 2>&1; then
+              echo "Servicio respondiendo correctamente"
+              echo "status=success" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Intento $RETRY_COUNT de $MAX_RETRIES..."
+            sleep 10
+          done
+          
+          echo "status=failed" >> $GITHUB_OUTPUT
+          echo "Health check fallo despues de $MAX_RETRIES intentos"
+          exit 1
+
+  # ══════════════════════════════════════════════════════════════════════════════
+  # JOB 6: Rollback si falla el health check
+  # ══════════════════════════════════════════════════════════════════════════════
+  rollback:
+    name: Rollback
+    needs: health-check
+    if: failure() && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ejecutar rollback
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_KEY }}
+          port: 22
+          script: |
+            echo "Iniciando rollback..."
+            cd /opt/Paradox
+            
+            # Restaurar imagen anterior
+            PREVIOUS_ID=$(cat /tmp/previous_image_id 2>/dev/null || echo "")
+            if [ -n "$PREVIOUS_ID" ]; then
+              docker tag $PREVIOUS_ID ghcr.io/paradoxboard/service-csharp:production
+              docker compose up -d service-csharp
+              echo "Rollback completado"
+            else
+              echo "No hay imagen anterior para rollback"
+            fi
+
+      - name: Notificar rollback
+        run: echo "Se ejecuto rollback automatico debido a fallo en health check"
+
+  # ══════════════════════════════════════════════════════════════════════════════
+  # JOB 7: Notificaciones
+  # ══════════════════════════════════════════════════════════════════════════════
+  notify-success:
+    name: Notify Success
+    needs: health-check
+    if: success() && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notificar exito (Discord)
+        if: ${{ vars.DISCORD_WEBHOOK_ENABLED == 'true' }}
+        run: |
+          curl -X POST "${{ secrets.DISCORD_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "embeds": [{
+                "title": "Deploy Exitoso",
+                "description": "service-csharp desplegado a production",
+                "color": 3066993,
+                "fields": [
+                  {"name": "Repositorio", "value": "${{ github.repository }}", "inline": true},
+                  {"name": "Commit", "value": "${{ github.sha }}", "inline": true}
+                ]
+              }]
+            }' || true
+
+      - name: Resumen del deploy
+        run: |
+          echo "Deploy exitoso a production"
+          echo "Commit: ${{ github.sha }}"
+
+  notify-failure:
+    name: Notify Failure
+    needs: [deploy, health-check]
+    if: failure() && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notificar fallo (Discord)
+        if: ${{ vars.DISCORD_WEBHOOK_ENABLED == 'true' }}
+        run: |
+          curl -X POST "${{ secrets.DISCORD_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "embeds": [{
+                "title": "Deploy Fallido",
+                "description": "Error en deploy de service-csharp a production",
+                "color": 15158332,
+                "fields": [
+                  {"name": "Repositorio", "value": "${{ github.repository }}", "inline": true},
+                  {"name": "Ver logs", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "inline": false}
+                ]
+              }]
+            }' || true
+
+      - name: Resumen del fallo
+        run: |
+          echo "Deploy fallido - revisar logs"
+          exit 1

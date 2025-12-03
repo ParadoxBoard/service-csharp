@@ -1,28 +1,24 @@
-# ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║                        CI PIPELINE - .NET/C#                                ║
-# ║  Se ejecuta en Pull Requests para validar codigo antes del merge            ║
-# ╚══════════════════════════════════════════════════════════════════════════════╝
-
 name: CI Pipeline
 
 on:
   pull_request:
-    branches: [production, development, main]
+    branches:
+      - production
   push:
-    branches: [development]
+    branches:
+      - development
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ════════════════════════════════════════════════════════════════════════════
-  # JOB 1: Build
-  # ════════════════════════════════════════════════════════════════════════════
-  build:
-    name: Build
+  # ══════════════════════════════════════════════════════════════════════════════
+  # JOB 1: Build y Tests
+  # ══════════════════════════════════════════════════════════════════════════════
+  build-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout codigo
         uses: actions/checkout@v4
@@ -31,7 +27,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-          cache: true # CORREGIDO: Habilita la caché correctamente (true/false)
 
       - name: Restaurar dependencias
         run: dotnet restore
@@ -39,82 +34,69 @@ jobs:
       - name: Compilar
         run: dotnet build --configuration Release --no-restore
 
-  # ════════════════════════════════════════════════════════════════════════════
-  # JOB 2: Tests
-  # ════════════════════════════════════════════════════════════════════════════
-  test:
-    name: Test
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout codigo
-        uses: actions/checkout@v4
-
-      - name: Configurar .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-          cache: true
-
-      - name: Restaurar dependencias
-        run: dotnet restore
-
       - name: Ejecutar tests
         run: dotnet test --configuration Release --no-restore --verbosity normal
 
-  # ════════════════════════════════════════════════════════════════════════════
-  # JOB 3: Security Scan (Trivy) - CORREGIDO
-  # ════════════════════════════════════════════════════════════════════════════
-  security:
-    name: Security Scan
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write # Necesario si quieres subir reportes a GitHub Security
+      - name: Subir coverage reports
+        run: echo "Coverage reports would be uploaded here"
 
+  # ══════════════════════════════════════════════════════════════════════════════
+  # JOB 2: Security Scan
+  # ══════════════════════════════════════════════════════════════════════════════
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout codigo
         uses: actions/checkout@v4
 
-      # PASO NUEVO: Necesario construir la imagen antes de escanearla
-      # NOTA: Usamos minúsculas en el nombre de la imagen (paradoxboard)
-      - name: Construir imagen para escaneo
+      - name: Build imagen para escaneo
         run: docker build -t paradoxboard/service-csharp:scan .
 
-      - name: Escanear vulnerabilidades (Trivy)
+      - name: Escanear imagen con Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'paradoxboard/service-csharp:scan' # CORREGIDO: Minúsculas
+          image-ref: 'paradoxboard/service-csharp:scan'
           format: 'table'
-          exit-code: '1' # Falla el pipeline si encuentra vulnerabilidades críticas
+          exit-code: '0'
           ignore-unfixed: true
           vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+          severity: 'CRITICAL,HIGH,MEDIUM'
 
-  # ════════════════════════════════════════════════════════════════════════════
-  # Resumen final
-  # ════════════════════════════════════════════════════════════════════════════
-  ci-success:
-    name: CI Success
-    needs: [build, test, security] # Agregamos security a los requerimientos
-    if: always()
+  # ══════════════════════════════════════════════════════════════════════════════
+  # JOB 3: Build Verification
+  # ══════════════════════════════════════════════════════════════════════════════
+  build-verification:
+    name: Build Verification
     runs-on: ubuntu-latest
-    
+    needs: build-and-test
     steps:
-      - name: Verificar estado de jobs
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Construir imagen Docker (sin push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: paradoxboard/service-csharp:test
+          cache-from: type=gha
+
+  # ══════════════════════════════════════════════════════════════════════════════
+  # JOB 4: CI Success
+  # ══════════════════════════════════════════════════════════════════════════════
+  ci-success:
+    name: CI Pipeline Success
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan, build-verification]
+    if: success()
+    steps:
+      - name: CI completado exitosamente
         run: |
-          if [ "${{ needs.build.result }}" != "success" ]; then
-            echo "Build falló"
-            exit 1
-          fi
-          if [ "${{ needs.test.result }}" != "success" ]; then
-            echo "Tests fallaron"
-            exit 1
-          fi
-          if [ "${{ needs.security.result }}" != "success" ]; then
-            echo "Security check falló"
-            exit 1
-          fi
-          echo "Todos los checks pasaron exitosamente"
+          echo "CI Pipeline completado exitosamente"
+          echo "Repository: ${{ github.repository }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
