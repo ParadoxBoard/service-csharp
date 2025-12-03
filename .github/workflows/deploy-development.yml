@@ -1,9 +1,7 @@
 name: Build and Deploy to Development
 
 on:
-  push:
-    branches:
-      - development
+  # Solo se ejecuta manualmente desde la pestaña Actions
   workflow_dispatch:
 
 concurrency:
