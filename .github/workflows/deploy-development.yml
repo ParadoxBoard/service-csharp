@@ -1,0 +1,120 @@
+name: Build and Deploy to Development
+
+on:
+  # Solo se ejecuta manualmente desde la pestaña Actions
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ══════════════════════════════════════════════════════════════════════════════
+  # JOB 1: Build y Tests
+  # ══════════════════════════════════════════════════════════════════════════════
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restaurar dependencias
+        run: dotnet restore
+
+      - name: Compilar
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Ejecutar tests
+        run: dotnet test --configuration Release --no-restore --verbosity normal
+
+  # ══════════════════════════════════════════════════════════════════════════════
+  # JOB 2: Build y Push de imagen Docker
+  # ══════════════════════════════════════════════════════════════════════════════
+  build-and-push:
+    name: Build & Push Docker
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Iniciar sesion en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Extraer metadatos
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest
+
+      - name: Construir y publicar imagen Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ══════════════════════════════════════════════════════════════════════════════
+  # JOB 3: Deploy usando docker compose
+  # ══════════════════════════════════════════════════════════════════════════════
+  deploy:
+    name: Deploy to Server
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Desplegar al servidor
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_KEY }}
+          port: 22
+          script: |
+            set -e # Detener el script si ocurre algún error
+            
+            # Login a GHCR
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
+            
+            # Ir a la carpeta del proyecto
+            cd /opt/Paradox
+            
+            # Descargar nuevas imagenes y reiniciar servicios
+            docker compose pull service-csharp
+            docker compose up -d --no-deps service-csharp
+            
+            # Verificar estado
+            docker compose ps service-csharp
+            
+            # Limpiar imagenes sin usar
+            docker image prune -f --filter "until=24h" || true
+            
+            echo "Deploy completado exitosamente"
