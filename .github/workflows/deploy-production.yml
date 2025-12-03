@@ -14,8 +14,8 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  # CONFIGURAR: URL de tu API para health check
-  HEALTH_CHECK_URL: https://api.tu-dominio.com/health
+  # Health check URL del servidor
+  HEALTH_CHECK_URL: http://116.202.108.237:4001/api/health
 
 jobs:
   # ══════════════════════════════════════════════════════════════════════════════
