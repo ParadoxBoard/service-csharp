@@ -1,4 +1,7 @@
-using System.Text;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using service_csharp.Data;
@@ -15,6 +18,9 @@ public class OpenAiService : IAiService
     private readonly string _apiKey;
     private readonly string _model;
 
+    private const int MaxHistoryMessages = 20;       // límite de mensajes en contexto
+    private const int MaxTextLength = 2000;          // recorte básico para no desbordar tokens
+
     public OpenAiService(
         HttpClient httpClient, 
         ParadoxContext context, 
@@ -25,8 +31,9 @@ public class OpenAiService : IAiService
         _context = context;
         _configuration = configuration;
         _boardTools = boardTools;
-        
-        _apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? "";
+
+        _apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") 
+            ?? throw new InvalidOperationException("OPENAI_API_KEY no está configurado");
         _model = Environment.GetEnvironmentVariable("OPENAI_MODEL") ?? "gpt-4-turbo-preview";
     }
 
@@ -46,14 +53,44 @@ public class OpenAiService : IAiService
         return conversation;
     }
 
+    public async Task<IEnumerable<AiConversation>> GetConversationsAsync(Guid userId, Guid? projectId = null)
+    {
+        var query = _context.AiConversations.AsQueryable()
+            .Where(c => c.CreatedBy == userId);
+
+        if (projectId.HasValue)
+        {
+            query = query.Where(c => c.ProjectId == projectId.Value);
+        }
+
+        return await query
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<AiMessage>> GetMessagesAsync(Guid conversationId, Guid userId, int take = 50, int skip = 0)
+    {
+        await EnsureConversationOwnerAsync(conversationId, userId);
+
+        return await _context.AiMessages
+            .Where(m => m.ConversationId == conversationId)
+            .OrderByDescending(m => m.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .OrderBy(m => m.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<string> SendMessageAsync(Guid conversationId, string message, Guid userId)
     {
+        await EnsureConversationOwnerAsync(conversationId, userId);
+
         // 1. Guardar mensaje del usuario
         var userMsg = new AiMessage
         {
             ConversationId = conversationId,
             Role = "user",
-            Content = JsonDocument.Parse(JsonSerializer.Serialize(new { text = message })),
+            Content = JsonDocument.Parse(JsonSerializer.Serialize(new { text = Trim(message) })),
             CreatedAt = DateTimeOffset.UtcNow
         };
         _context.AiMessages.Add(userMsg);
@@ -63,14 +100,24 @@ public class OpenAiService : IAiService
         var history = await _context.AiMessages
             .Where(m => m.ConversationId == conversationId)
             .OrderBy(m => m.CreatedAt)
-            .Take(10) // Limitar contexto para no gastar tokens infinitos
+            .Take(MaxHistoryMessages)
             .ToListAsync();
 
-        var messages = history.Select(m => new
+        var systemPrompt = new
+        {
+            role = "system",
+            content = "Eres un asistente especializado en metodologías ágiles (Scrum, Kanban). " +
+                      "Ayudas a planificar, priorizar, refinar y dar seguimiento a issues. " +
+                      "Sé conciso, da pasos claros, propone backlog items, criterios de aceptación y estados. " +
+                      "Si usas herramientas, explica brevemente el resultado."
+        };
+
+        var messages = new List<object> { systemPrompt };
+        messages.AddRange(history.Select(m => new
         {
             role = m.Role,
-            content = m.Content.RootElement.GetProperty("text").GetString()
-        }).ToList();
+            content = m.Content.RootElement.TryGetProperty("text", out var t) ? Trim(t.GetString() ?? "") : ""
+        }));
 
         // 3. Definir herramientas disponibles
         var tools = new object[]
@@ -189,10 +236,7 @@ public class OpenAiService : IAiService
                  toolResult = JsonSerializer.Serialize(summary);
             }
 
-            // Guardar ejecución de herramienta como mensaje 'assistant' (para mantener historial)
-            // En una implementación completa, se debería hacer un segundo round-trip a OpenAI con el resultado.
-            // Por ahora retornamos el resultado de la acción directamente.
-            
+            // Guardar resultado de herramienta
             var toolMsg = new AiMessage
             {
                 ConversationId = conversationId,
@@ -203,7 +247,47 @@ public class OpenAiService : IAiService
             _context.AiMessages.Add(toolMsg);
             await _context.SaveChangesAsync();
 
-            return toolResult;
+            // Segundo round-trip para que la IA genere respuesta final con el resultado de la herramienta
+            var followupMessages = new List<object>(messages)
+            {
+                new
+                {
+                    role = "assistant",
+                    content = $"Executed {functionName}: {toolResult}"
+                }
+            };
+
+            var followupBody = new
+            {
+                model = _model,
+                messages = followupMessages,
+                tool_choice = "none"
+            };
+
+            var followupResponse = await _httpClient.PostAsJsonAsync("https://api.openai.com/v1/chat/completions", followupBody);
+            var followupString = await followupResponse.Content.ReadAsStringAsync();
+
+            if (!followupResponse.IsSuccessStatusCode)
+            {
+                return toolResult; // devolvemos el resultado de la herramienta si la segunda llamada falla
+            }
+
+            using var followDoc = JsonDocument.Parse(followupString);
+            var followChoice = followDoc.RootElement.GetProperty("choices")[0];
+            var followMsg = followChoice.GetProperty("message");
+            var finalContent = followMsg.GetProperty("content").GetString();
+
+            var assistantMsgFinal = new AiMessage
+            {
+                ConversationId = conversationId,
+                Role = "assistant",
+                Content = JsonDocument.Parse(JsonSerializer.Serialize(new { text = finalContent })),
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            _context.AiMessages.Add(assistantMsgFinal);
+            await _context.SaveChangesAsync();
+
+            return finalContent ?? toolResult;
         }
         else
         {
@@ -221,6 +305,26 @@ public class OpenAiService : IAiService
             await _context.SaveChangesAsync();
 
             return content ?? "";
+        }
+    }
+
+    private static string Trim(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+        return text.Length <= MaxTextLength ? text : text[..MaxTextLength];
+    }
+
+    private async Task EnsureConversationOwnerAsync(Guid conversationId, Guid userId)
+    {
+        var convo = await _context.AiConversations.FirstOrDefaultAsync(c => c.Id == conversationId);
+        if (convo == null)
+        {
+            throw new InvalidOperationException("Conversación no encontrada");
+        }
+
+        if (convo.CreatedBy != userId)
+        {
+            throw new UnauthorizedAccessException("No tienes acceso a esta conversación");
         }
     }
 }
