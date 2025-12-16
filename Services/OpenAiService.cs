@@ -169,6 +169,22 @@ public class OpenAiService : IAiService
                         required = new[] { "projectId" }
                     }
                 }
+            },
+            new {
+                type = "function",
+                function = new {
+                    name = "comment_on_github_issue",
+                    description = "Post a comment on a GitHub issue",
+                    parameters = new {
+                        type = "object",
+                        properties = new {
+                            repoId = new { type = "integer", description = "The Repository ID (long)" },
+                            issueNumber = new { type = "integer", description = "The Issue Number" },
+                            comment = new { type = "string", description = "The comment content" }
+                        },
+                        required = new[] { "repoId", "issueNumber", "comment" }
+                    }
+                }
             }
         };
 
@@ -234,6 +250,14 @@ public class OpenAiService : IAiService
                  
                  var summary = await _boardTools.GetProjectIssuesSummaryAsync(pid, status);
                  toolResult = JsonSerializer.Serialize(summary);
+            }
+            else if (functionName == "comment_on_github_issue")
+            {
+                 var repoId = argsDoc.RootElement.GetProperty("repoId").GetInt64();
+                 var issueNum = argsDoc.RootElement.GetProperty("issueNumber").GetInt32();
+                 var comment = argsDoc.RootElement.GetProperty("comment").GetString()!;
+                 
+                 toolResult = await _boardTools.CommentOnGithubIssue(repoId, issueNum, comment);
             }
 
             // Guardar resultado de herramienta
