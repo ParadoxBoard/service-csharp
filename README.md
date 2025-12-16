@@ -86,3 +86,161 @@ Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
 *   `Services/`: Lógica de negocio (`OpenAiService`, `GithubService`, `BoardTools`).
 *   `Models/`: Entidades de la base de datos.
 *   `Data/`: Contexto de Entity Framework (`ParadoxContext`).
+
+## 📚 Documentación API (Swagger)
+
+Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
+
+*   **URL:** `http://localhost:4001/swagger` (Si usas Docker y el puerto 4001)
+*   **Local:** `http://localhost:5233/swagger`
+
+## 📂 Estructura del Proyecto
+
+*   `Controllers/`: Endpoints de la API (Sync, Auth, Projects, etc.).
+*   `Services/`: Lógica de negocio (`OpenAiService`, `GithubService`, `BoardTools`).
+*   `Models/`: Entidades de la base de datos.
+*   `Data/`: Contexto de Entity Framework (`ParadoxContext`).
+
+## 📚 Documentación API (Swagger)
+
+Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
+
+*   **URL:** `http://localhost:4001/swagger` (Si usas Docker y el puerto 4001)
+*   **Local:** `http://localhost:5233/swagger`
+
+## 📂 Estructura del Proyecto
+
+*   `Controllers/`: Endpoints de la API (Sync, Auth, Projects, etc.).
+*   `Services/`: Lógica de negocio (`OpenAiService`, `GithubService`, `BoardTools`).
+*   `Models/`: Entidades de la base de datos.
+*   `Data/`: Contexto de Entity Framework (`ParadoxContext`).
+
+## 📚 Documentación API (Swagger)
+
+Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
+
+*   **URL:** `http://localhost:4001/swagger` (Si usas Docker y el puerto 4001)
+*   **Local:** `http://localhost:5233/swagger`
+
+## 📂 Estructura del Proyecto
+
+*   `Controllers/`: Endpoints de la API (Sync, Auth, Projects, etc.).
+*   `Services/`: Lógica de negocio (`OpenAiService`, `GithubService`, `BoardTools`).
+*   `Models/`: Entidades de la base de datos.
+*   `Data/`: Contexto de Entity Framework (`ParadoxContext`).
+
+## 📚 Documentación API (Swagger)
+
+Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
+
+*   **URL:** `http://localhost:4001/swagger` (Si usas Docker y el puerto 4001)
+*   **Local:** `http://localhost:5233/swagger`
+
+## 📂 Estructura del Proyecto
+
+*   `Controllers/`: Endpoints de la API (Sync, Auth, Projects, etc.).
+*   `Services/`: Lógica de negocio (`OpenAiService`, `GithubService`, `BoardTools`).
+*   `Models/`: Entidades de la base de datos.
+*   `Data/`: Contexto de Entity Framework (`ParadoxContext`).
+
+## 📚 Documentación API (Swagger)
+
+Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
+
+*   **URL:** `http://localhost:4001/swagger` (Si usas Docker y el puerto 4001)
+*   **Local:** `http://localhost:5233/swagger`
+
+## 📂 Estructura del Proyecto
+
+*   `Controllers/`: Endpoints de la API (Sync, Auth, Projects, etc.).
+*   `Services/`: Lógica de negocio (`OpenAiService`, `GithubService`, `BoardTools`).
+*   `Models/`: Entidades de la base de datos.
+*   `Data/`: Contexto de Entity Framework (`ParadoxContext`).
+
+## 📚 Documentación API (Swagger)
+
+Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
+
+*   **URL:** `http://localhost:4001/swagger` (Si usas Docker y el puerto 4001)
+*   **Local:** `http://localhost:5233/swagger`
+
+## 📂 Estructura del Proyecto
+
+*   `Controllers/`: Endpoints de la API (Sync, Auth, Projects, etc.).
+*   `Services/`: Lógica de negocio (`OpenAiService`, `GithubService`, `BoardTools`).
+*   `Models/`: Entidades de la base de datos.
+*   `Data/`: Contexto de Entity Framework (`ParadoxContext`).
+
+## 📚 Documentación API (Swagger)
+
+Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
+
+*   **URL:** `http://localhost:4001/swagger` (Si usas Docker y el puerto 4001)
+*   **Local:** `http://localhost:5233/swagger`
+
+## 📂 Estructura del Proyecto
+
+*   `Controllers/`: Endpoints de la API (Sync, Auth, Projects, etc.).
+*   `Services/`: Lógica de negocio (`OpenAiService`, `GithubService`, `BoardTools`).
+*   `Models/`: Entidades de la base de datos.
+*   `Data/`: Contexto de Entity Framework (`ParadoxContext`).
+
+## 📚 Documentación API (Swagger)
+
+Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
+
+*   **URL:** `http://localhost:4001/swagger` (Si usas Docker y el puerto 4001)
+*   **Local:** `http://localhost:5233/swagger`
+
+## 📂 Estructura del Proyecto
+
+*   `Controllers/`: Endpoints de la API (Sync, Auth, Projects, etc.).
+*   `Services/`: Lógica de negocio (`OpenAiService`, `GithubService`, `BoardTools`).
+*   `Models/`: Entidades de la base de datos.
+*   `Data/`: Contexto de Entity Framework (`ParadoxContext`).
+
+## 📚 Documentación API (Swagger)
+
+Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
+
+*   **URL:** `http://localhost:4001/swagger` (Si usas Docker y el puerto 4001)
+*   **Local:** `http://localhost:5233/swagger`
+
+## 📂 Estructura del Proyecto
+
+*   `Controllers/`: Endpoints de la API (Sync, Auth, Projects, etc.).
+*   `Services/`: Lógica de negocio (`OpenAiService`, `GithubService`, `BoardTools`).
+*   `Models/`: Entidades de la base de datos.
+*   `Data/`: Contexto de Entity Framework (`ParadoxContext`).
+
+## 📚 Documentación API (Swagger)
+
+Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
+
+*   **URL:** `http://localhost:4001/swagger` (Si usas Docker y el puerto 4001)
+*   **Local:** `http://localhost:5233/swagger`
+
+## 📂 Estructura del Proyecto
+
+*   `Controllers/`: Endpoints de la API (Sync, Auth, Projects, etc.).
+*   `Services/`: Lógica de negocio (`OpenAiService`, `GithubService`, `BoardTools`).
+*   `Models/`: Entidades de la base de datos.
+*   `Data/`: Contexto de Entity Framework (`ParadoxContext`).
+
+## 📚 Documentación API (Swagger)
+
+Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
+
+*   **URL:** `http://localhost:4001/swagger` (Si usas Docker y el puerto 4001)
+*   **Local:** `http://localhost:5233/swagger`
+
+## 📂 Estructura del Proyecto
+
+*   `Controllers/`: Endpoints de la API (Sync, Auth, Projects, etc.).
+*   `Services/`: Lógica de negocio (`OpenAiService`, `GithubService`, `BoardTools`).
+*   `Models/`: Entidades de la base de datos.
+*   `Data/`: Contexto de Entity Framework (`ParadoxContext`).
+
+## 📚 Documentación API (Swagger)
+
+Una vez iniciado el servicio, puedes explorar y probar los endpoints en:
