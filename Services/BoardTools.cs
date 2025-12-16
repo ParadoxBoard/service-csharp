@@ -11,10 +11,12 @@ namespace service_csharp.Services;
 public class BoardTools
 {
     private readonly ParadoxContext _context;
+    private readonly GithubService _githubService;
 
-    public BoardTools(ParadoxContext context)
+    public BoardTools(ParadoxContext context, GithubService githubService)
     {
         _context = context;
+        _githubService = githubService;
     }
 
     [Description("Crea una nueva tarea o issue en el proyecto especificado.")]
@@ -99,5 +101,15 @@ public class BoardTools
         issue.AssigneeId = user.Id;
         await _context.SaveChangesAsync();
         return issue;
+    }
+
+    [Description("Publica un comentario en un Issue de GitHub.")]
+    public async Task<string> CommentOnGithubIssue(
+        [Description("El ID del repositorio (RepoId)")] long repoId,
+        [Description("El número del issue")] int issueNumber,
+        [Description("El contenido del comentario")] string comment)
+    {
+        await _githubService.CreateIssueCommentAsync(repoId, issueNumber, comment);
+        return "Comentario publicado exitosamente en GitHub.";
     }
 }

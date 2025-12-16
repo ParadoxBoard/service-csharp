@@ -49,6 +49,18 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        builder =>
+        {
+            builder.AllowAnyOrigin()
+                   .AllowAnyMethod()
+                   .AllowAnyHeader();
+        });
+});
+
 builder.Services.AddControllers();
 
 // Services
@@ -56,6 +68,7 @@ builder.Services.AddScoped<BoardTools>();
 builder.Services.AddHttpClient<IAiService, OpenAiService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IProjectTemplateService, ProjectTemplateService>();
+builder.Services.AddScoped<GithubService>();
 
 // Database configuration from environment variables
 var dbHost = Environment.GetEnvironmentVariable("DB_HOST") ?? "localhost";
@@ -106,6 +119,8 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseCors("AllowAll");
 
 app.MapControllers();
 
